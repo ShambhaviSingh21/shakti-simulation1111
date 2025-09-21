@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Shakti — Online Simulation</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, Roboto, "Segoe UI", Arial; padding:20px; max-width:900px; margin:auto; }
+    h1 { margin-bottom:6px; }
+    .card { border:1px solid #ddd; border-radius:8px; padding:12px; margin:10px 0; box-shadow: 0 2px 6px rgba(0,0,0,0.03);}
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .big { font-size:1.1rem; font-weight:600; }
+    button { padding:8px 12px; border-radius:8px; cursor:pointer; border:1px solid #888; background:#fff; }
+    .danger { background:#ff3b30; color:white; border:none; }
+    .status { padding:6px 8px; border-radius:6px; background:#f4f4f4; }
+    #map { height:240px; border-radius:8px; border:1px solid #ccc; background:linear-gradient(180deg,#e6f7ff,#fff); display:flex; align-items:center; justify-content:center; color:#555;}
+    .meter { height:10px; background:#eee; border-radius:6px; overflow:hidden; width:200px; }
+    .meter > i { display:block; height:100%; background:linear-gradient(90deg,#2ecc71,#f1c40f); width:0%; }
+    #micViz { width:100%; height:60px; background:#111; border-radius:6px; overflow:hidden; }
+    #micCanvas{ width:100%; height:100%; display:block; }
+    label { font-size:0.9rem; }
+    .component-list { font-size:0.9rem; }
+    .tiny { font-size:0.85rem; color:#666; }
+  </style>
+</head>
+<body>
+  <h1>Shakti — Online Simulation</h1>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="big">Device Simulation (ESP32-C3 + GPS + Mic + Battery + SOS)</div>
+        <div class="tiny">Interactive mock of the project's behavior — runs locally in your browser.</div>
+      </div>
+      <div>
+        <button id="startSim">Start Simulation</button>
+        <button id="stopSim" disabled>Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card row">
+    <div style="flex:1">
+      <label>GPS / Location</label>
+      <div id="map">No GPS data yet</div>
+    </div>
+    <div style="width:260px">
+      <label>Battery</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <div class="meter"><i id="batteryBar" style="width:80%"></i></div>
+        <div id="batteryText">80%</div>
+      </div>
+      <div style="margin-top:12px">
+        <label>Connectivity</label>
+        <div class="row" style="margin-top:6px">
+          <div class="status" id="wifiStatus">WiFi: disconnected</div>
+          <div class="status" id="bleStatus">BLE: advertising</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Microphone (level visualizer)</label>
+    <div id="micViz"><canvas id="micCanvas"></canvas></div>
+    <div style="margin-top:8px" class="row">
+      <div class="status" id="micStatus">Mic: inactive</div>
+    </div>
+  </div>
+
+  <div class="card row" style="align-items:center;justify-content:space-between">
+    <div>
+      <label class="big">SOS Push Button</label><br/>
+      <div class="tiny">Simulate sending an SOS packet (GPS + battery + audio snapshot)</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="sosBtn" class="danger">SEND SOS</button>
+      <div id="sosLog" class="tiny">No SOS sent</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const startBtn = document.getElementById('startSim');
+  const stopBtn = document.getElementById('stopSim');
+  const map = document.getElementById('map');
+  const batteryBar = document.getElementById('batteryBar');
+  const batteryText = document.getElementById('batteryText');
+  const wifiStatus = document.getElementById('wifiStatus');
+  const bleStatus = document.getElementById('bleStatus');
+  const micStatus = document.getElementById('micStatus');
+  const sosBtn = document.getElementById('sosBtn');
+  const sosLog = document.getElementById('sosLog');
+
+  let simTimer = null;
+  let battery = 0.8;
+  let lat = 28.6139, lon = 77.2090;
+
+  function updateMap() {
+    const html = `<div style="text-align:center">
+      <div style="font-weight:600">${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
+      <div class="tiny">Battery: ${(battery*100).toFixed(0)}%</div>
+    </div>`;
+    map.innerHTML = html;
+  }
+
+  function stepSimulation() {
+    lat += (Math.random()-0.5)*0.0006;
+    lon += (Math.random()-0.5)*0.0006;
+    battery -= 0.005;
+    if (battery < 0.1) battery = 1;
+    batteryBar.style.width = Math.round(battery*100)+'%';
+    batteryText.textContent = Math.round(battery*100)+'%';
+    wifiStatus.textContent = Math.random()<0.5 ? 'WiFi: connected' : 'WiFi: disconnected';
+    bleStatus.textContent = Math.random()<0.5 ? 'BLE: connected' : 'BLE: advertising';
+    updateMap();
+  }
+
+  function startSimulation() {
+    if (simTimer) return;
+    simTimer = setInterval(stepSimulation, 2000);
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+  }
+
+  function stopSimulation() {
+    clearInterval(simTimer); simTimer = null;
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  }
+
+  startBtn.addEventListener('click', startSimulation);
+  stopBtn.addEventListener('click', stopSimulation);
+  sosBtn.addEventListener('click', ()=>{
+    sosLog.textContent = "SOS sent at " + new Date().toLocaleTimeString();
+    alert("SOS Packet Sent!");
+  });
+
+  updateMap();
+})();
+</script>
+</body>
+</html>
